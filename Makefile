@@ -1,34 +1,34 @@
 COMMIT = $(shell git describe --always)
 VERSION = $(shell grep Version cli/version.go | sed -E 's/.*"(.+)"$$/\1/')
-GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
-GOXOSARCH ?= "darwin/amd64 linux/amd64 linux/arm64 windows/amd64"
 
-default: build
+PHONY: help vendor
+.DEFAULT_GOAL := help
 
-# build generate binary on './bin' directory.
-build:
+
+build: ## build generate binary on './bin' directory.
 	go build -ldflags "-X main.GitCommit=$(COMMIT)" -o bin/exporter_proxy .
 
-buildx:
-	gox -ldflags "-X main.GitCommit=$(COMMIT)" -output "bin/v$(VERSION)/{{.Dir}}_{{.OS}}_{{.Arch}}" -osarch $(GOXOSARCH) .
+buildx: build-linux-amd64 build-linux-arm64 ## build for all platforms
+	@echo built for linux/amd64 and linux/arm64
 
-lint:
-	golint ${GOFILES_NOVENDOR}
+build-linux-amd64: vendor ## build static for linux/amd64
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/exporter_proxy_linux_amd64 .
 
-vet:
-	go vet -v ${GOFILES_NOVENDOR}
+build-linux-arm64: vendor ### build static for linux/arm64
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/exporter_proxy_linux_arm64 .
 
-test:
+test: ## run tests
 	go test
 
-test-short:
+test-short: ## run tests (short)
 	go test -short
 
-fmt:
-	gofmt -l -w ${GOFILES_NOVENDOR}
+vendor: ## fetch vendor deps
+	go mod vendor
 
-release: buildx
-	git tag v$(VERSION)
-	git push origin v$(VERSION)
-	ghr v$(VERSION) bin/v$(VERSION)/
+release: buildx ## releases files to Github
+	gh release create v$(VERSION) -d 'bin/exporter_proxy_linux_arm64' 'bin/exporter_proxy_linux_amd64'
+	@echo Release has been drafted. Go to the github page to check it and publish it
 
+help: ## displays this help
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
