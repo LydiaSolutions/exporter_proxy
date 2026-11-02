@@ -1,34 +1,33 @@
 # exporter_proxy
 
-Simple reverse proxy for prometheus exporters.
+exporter_proxy lets Prometheus scrape several exporters through one shared network endpoint. Each exporter has its own public metrics path, which forwards requests to its configured upstream URL. This is useful when opening separate ports for every exporter is difficult.
 
-It is useful when it is difficult to open multiple ports on one server.
+The Go service combines configuration loading and validation, reverse proxy routing, listener management, and optional access and error logging. It supports HTTPS for incoming connections, HTTPS upstreams, inherited listeners through server_starter, and graceful shutdown on SIGTERM.
 
-## Install
+## Getting started
 
-### Precompied binaries
+You need reachable exporter endpoints and a Prometheus instance able to reach the proxy. To build from source, install Go matching the repository's module requirements, Git, and Make; dependency downloads require network access.
 
-Download from https://github.com/rrreeeyyy/exporter_proxy/releases
+From the repository root:
 
-### Docker
-
-```
-docker pull rrreeeyyy/exporter_proxy
+```sh
+make build
 ```
 
-### go get
+Prepare your own YAML configuration using the [annotated configuration example](config.example.yml). Set the listening address and map each public metrics path to an exporter URL. Replace the sample destinations, remove the example TLS section unless you supply readable certificate and key files, and choose writable log destinations if logging to files.
 
-```
-go get -u github.com/rrreeeyyy/exporter_proxy
-```
+From the repository root, start the built executable with your prepared configuration:
 
-## Usage
-
-```
-$ exporter_proxy -config config.yml
+```sh
+./bin/exporter_proxy -config config.yml
 ```
 
-If you make the following settings,
+This starts a network listener and may create or append configured log files. Request one of your configured public metrics paths and confirm that it returns the intended exporter's metrics. In Prometheus, configure a separate scrape job for each exporter, using the shared proxy address as the target and that exporter's public path as its `metrics_path`.
+
+## Example proxy and scrape configuration
+
+The following example maps two exporters through the same proxy listener.
+
 
 ```
 listen: "0.0.0.0:9099"
@@ -60,7 +59,16 @@ scrape_configs:
       - targets: ["exporter_proxy_host:9099"]
 ```
 
-## Configuration
+## Configuration and operation
 
-- Standard example: https://github.com/rrreeeyyy/exporter_proxy/blob/master/config.example.yml
-- For docker example: https://github.com/rrreeeyyy/exporter_proxy/blob/master/example/config/config.yml
+The annotated example covers listener selection, TLS, LTSV access logging, error logging, and shutdown timing. Keep upstream certificate verification enabled; the self-signed demonstration explicitly disables it. Allow the proxy to reach each upstream and the service account to read any configured TLS material.
+
+The original distribution options are [upstream binaries](https://github.com/rrreeeyyy/exporter_proxy/releases) and the Docker image `rrreeeyyy/exporter_proxy`. The [container demonstration](example/docker-compose.yml) illustrates exporter connectivity and mounted configuration, but its startup setup and the repository's container build need correction before use. Original upstream configuration references remain available for [standalone use](https://github.com/rrreeeyyy/exporter_proxy/blob/master/config.example.yml) and [container use](https://github.com/rrreeeyyy/exporter_proxy/blob/master/example/config/config.yml).
+
+## Development checks
+
+From the repository root, `make test` runs startup and invalid-configuration tests. It builds a temporary executable and starts a local listener, so the configured listening address must be available. `make test-short` skips these integration tests.
+
+## License
+
+[MIT License](LICENSE), Copyright (c) 2017 Yoshikawa Ryota.
