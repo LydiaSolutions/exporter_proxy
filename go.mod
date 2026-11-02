@@ -1,6 +1,6 @@
 module github.com/rrreeeyyy/exporter_proxy
 
-go 1.26
+go 1.27
 
 require (
 	github.com/go-playground/validator/v10 v10.30.1
