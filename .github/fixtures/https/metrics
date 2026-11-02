@@ -1,0 +1,3 @@
+# HELP ci_https_backend Static HTTPS fixture backend.
+# TYPE ci_https_backend gauge
+ci_https_backend 1
