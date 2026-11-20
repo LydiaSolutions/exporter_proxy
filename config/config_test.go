@@ -67,6 +67,43 @@ exporters:
 	}
 }
 
+func TestLoadConfig_ExporterYAMLMerge(t *testing.T) {
+	path := writeConfigFile(t, t.TempDir(), "config.yml", `
+listen: "127.0.0.1:9099"
+defaults: &defaults
+  node_exporter:
+    path: "/node/metrics"
+    url: "http://127.0.0.1:9100/metrics"
+  other_exporter:
+    path: "/other/metrics"
+    url: "http://127.0.0.1:9101/metrics"
+exporters:
+  <<: *defaults
+  node_exporter:
+    path: "/node/metrics"
+    url: "http://127.0.0.1:9200/metrics"
+`)
+
+	cfg, err := LoadConfigFromYAML(path)
+	if err != nil {
+		t.Fatalf("LoadConfigFromYAML: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if len(cfg.ExporterConfigs) != 2 {
+		t.Fatalf("expected 2 exporters, got %d", len(cfg.ExporterConfigs))
+	}
+	for name, want := range map[string]string{
+		"node_exporter":  "http://127.0.0.1:9200/metrics",
+		"other_exporter": "http://127.0.0.1:9101/metrics",
+	} {
+		if got := cfg.ExporterConfigs[name].URL; got == nil || *got != want {
+			t.Errorf("expected %s to use URL %q, got %v", name, want, got)
+		}
+	}
+}
+
 func TestLoadConfig_EmptyIncludeDir(t *testing.T) {
 	dir := t.TempDir()
 	includeDir := filepath.Join(dir, "exporters.d")

@@ -25,20 +25,16 @@ func (s *exportersSection) UnmarshalYAML(value *yaml.Node) error {
 		return fmt.Errorf("exporters must be a mapping")
 	}
 
-	s.items = make(map[string]ExporterConfig)
-	keyLines := make(map[string]int, len(value.Content)/2)
+	var entries map[string]yaml.Node
+	if err := value.Decode(&entries); err != nil {
+		return fmt.Errorf("exporters: %w", err)
+	}
 
-	for i := 0; i < len(value.Content); i += 2 {
-		keyNode := value.Content[i]
-		key := keyNode.Value
-		if line, exists := keyLines[key]; exists {
-			return fmt.Errorf("exporters: line %d: mapping key %q already defined at line %d", keyNode.Line, key, line)
-		}
-		keyLines[key] = keyNode.Line
-		node := value.Content[i+1]
+	s.items = make(map[string]ExporterConfig, len(entries))
 
+	for key, node := range entries {
 		if key == includeKey {
-			paths, err := parseIncludePaths(node)
+			paths, err := parseIncludePaths(&node)
 			if err != nil {
 				return fmt.Errorf("exporters.include: %w", err)
 			}
