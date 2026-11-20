@@ -26,9 +26,15 @@ func (s *exportersSection) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	s.items = make(map[string]ExporterConfig)
+	keyLines := make(map[string]int, len(value.Content)/2)
 
 	for i := 0; i < len(value.Content); i += 2 {
-		key := value.Content[i].Value
+		keyNode := value.Content[i]
+		key := keyNode.Value
+		if line, exists := keyLines[key]; exists {
+			return fmt.Errorf("exporters: line %d: mapping key %q already defined at line %d", keyNode.Line, key, line)
+		}
+		keyLines[key] = keyNode.Line
 		node := value.Content[i+1]
 
 		if key == includeKey {

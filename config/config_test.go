@@ -50,6 +50,23 @@ exporters:
 	}
 }
 
+func TestLoadConfig_DuplicateInlineExporter(t *testing.T) {
+	path := writeConfigFile(t, t.TempDir(), "config.yml", `
+listen: "127.0.0.1:9099"
+exporters:
+  node_exporter:
+    path: "/node_exporter/metrics"
+    url: "http://127.0.0.1:9100/metrics"
+  node_exporter:
+    path: "/node_exporter/metrics"
+    url: "http://127.0.0.1:9200/metrics"
+`)
+
+	if _, err := LoadConfigFromYAML(path); err == nil {
+		t.Fatal("expected an error for a duplicate inline exporter")
+	}
+}
+
 func TestLoadConfig_EmptyIncludeDir(t *testing.T) {
 	dir := t.TempDir()
 	includeDir := filepath.Join(dir, "exporters.d")
