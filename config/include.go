@@ -33,7 +33,9 @@ func (s *exportersSection) UnmarshalYAML(value *yaml.Node) error {
 	s.items = make(map[string]ExporterConfig, len(entries))
 
 	for key, node := range entries {
-		if key == includeKey {
+		isMapping := node.Kind == yaml.MappingNode ||
+			(node.Kind == yaml.AliasNode && node.Alias.Kind == yaml.MappingNode)
+		if key == includeKey && !isMapping {
 			paths, err := parseIncludePaths(&node)
 			if err != nil {
 				return fmt.Errorf("exporters.include: %w", err)

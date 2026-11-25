@@ -50,6 +50,38 @@ exporters:
 	}
 }
 
+func TestLoadConfig_ExporterNamedInclude(t *testing.T) {
+	const path = "/include/metrics"
+	const url = "http://127.0.0.1:9100/metrics"
+	const exporter = "{path: " + path + ", url: " + url + "}"
+
+	for name, config := range map[string]string{
+		"mapping": "exporters:\n  include: " + exporter + "\n",
+		"alias":   "defaults: &exporter " + exporter + "\nexporters:\n  include: *exporter\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			configPath := writeConfigFile(t, t.TempDir(), "config.yml", "listen: 127.0.0.1:9099\n"+config)
+			cfg, err := LoadConfigFromYAML(configPath)
+			if err != nil {
+				t.Fatalf("LoadConfigFromYAML: %v", err)
+			}
+			if err := cfg.Validate(); err != nil {
+				t.Fatalf("Validate: %v", err)
+			}
+			got, ok := cfg.ExporterConfigs["include"]
+			if !ok || len(cfg.ExporterConfigs) != 1 {
+				t.Fatalf("expected only the include exporter, got %v", cfg.ExporterConfigs)
+			}
+			if got.Path == nil || *got.Path != path {
+				t.Errorf("expected path %q, got %v", path, got.Path)
+			}
+			if got.URL == nil || *got.URL != url {
+				t.Errorf("expected URL %q, got %v", url, got.URL)
+			}
+		})
+	}
+}
+
 func TestLoadConfig_DuplicateInlineExporter(t *testing.T) {
 	path := writeConfigFile(t, t.TempDir(), "config.yml", `
 listen: "127.0.0.1:9099"
