@@ -50,6 +50,24 @@ exporters:
 	}
 }
 
+func TestLoadConfig_EmptyExporterMap(t *testing.T) {
+	path := writeConfigFile(t, t.TempDir(), "config.yml", `
+listen: "127.0.0.1:9099"
+exporters: {}
+`)
+
+	cfg, err := LoadConfigFromYAML(path)
+	if err != nil {
+		t.Fatalf("LoadConfigFromYAML: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if len(cfg.ExporterConfigs) != 0 {
+		t.Fatalf("expected no exporters, got %d", len(cfg.ExporterConfigs))
+	}
+}
+
 func TestLoadConfig_ExporterNamedInclude(t *testing.T) {
 	const path = "/include/metrics"
 	const url = "http://127.0.0.1:9100/metrics"

@@ -40,7 +40,7 @@ func (s *exportersSection) UnmarshalYAML(value *yaml.Node) error {
 			if err != nil {
 				return fmt.Errorf("exporters.include: %w", err)
 			}
-			s.includePaths = append(s.includePaths, paths...)
+			s.includePaths = paths
 			continue
 		}
 
@@ -55,7 +55,7 @@ func (s *exportersSection) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func (s *exportersSection) Resolve(baseDir string) error {
-	if len(s.includePaths) == 0 {
+	if s.includePaths == nil {
 		return nil
 	}
 
@@ -76,6 +76,10 @@ func (s *exportersSection) Resolve(baseDir string) error {
 		merged[name] = cfg
 	}
 
+	// Leave the exporter map unset when an include directive yields no exporters.
+	if len(merged) == 0 {
+		merged = nil
+	}
 	s.items = merged
 	s.includePaths = nil
 	return nil
