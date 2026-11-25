@@ -1,0 +1,3 @@
+# HELP ci_http_backend Static HTTP fixture backend.
+# TYPE ci_http_backend gauge
+ci_http_backend 1
