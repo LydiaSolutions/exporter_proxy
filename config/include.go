@@ -86,16 +86,16 @@ func (s *exportersSection) Resolve(baseDir string) error {
 }
 
 func parseIncludePaths(node *yaml.Node) ([]string, error) {
-	switch node.Kind {
-	case yaml.ScalarNode:
+	switch {
+	case node.Kind == yaml.ScalarNode && node.ShortTag() == "!!str":
 		if node.Value == "" {
 			return nil, fmt.Errorf("must not be empty")
 		}
 		return []string{node.Value}, nil
-	case yaml.SequenceNode:
+	case node.Kind == yaml.SequenceNode && node.ShortTag() == "!!seq":
 		paths := make([]string, 0, len(node.Content))
 		for _, item := range node.Content {
-			if item.Kind != yaml.ScalarNode {
+			if item.Kind != yaml.ScalarNode || item.ShortTag() != "!!str" {
 				return nil, fmt.Errorf("entries must be strings")
 			}
 			if item.Value == "" {

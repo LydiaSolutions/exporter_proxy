@@ -201,6 +201,56 @@ exporters:
 	}
 }
 
+func TestLoadConfig_IncludePathsMustBeStrings(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"false", "null", "123"} {
+		writeFile(t, filepath.Join(dir, name, "exporter.yml"), name+`_exporter:
+  path: "/node/metrics"
+  url: "http://127.0.0.1:9100/metrics"
+`)
+	}
+
+	for _, tc := range []struct {
+		value string
+		want  []string
+	}{
+		{value: "false"},
+		{value: "null"},
+		{value: "[123]"},
+		{value: `!!null ["null"]`},
+		{value: `!!str ["null"]`},
+		{value: `"false"`, want: []string{"false_exporter"}},
+		{value: `["null", "123"]`, want: []string{"null_exporter", "123_exporter"}},
+		{value: `!!seq ["null"]`, want: []string{"null_exporter"}},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			path := writeConfigFile(t, dir, "config.yml", `
+listen: "127.0.0.1:9099"
+exporters:
+  include: `+tc.value+"\n")
+
+			cfg, err := LoadConfigFromYAML(path)
+			if tc.want == nil {
+				if err == nil {
+					t.Fatal("expected invalid include value to be rejected")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("LoadConfigFromYAML: %v", err)
+			}
+			if len(cfg.ExporterConfigs) != len(tc.want) {
+				t.Errorf("expected %d exporters, got %d", len(tc.want), len(cfg.ExporterConfigs))
+			}
+			for _, name := range tc.want {
+				if _, ok := cfg.ExporterConfigs[name]; !ok {
+					t.Errorf("expected exporter %q from quoted include path", name)
+				}
+			}
+		})
+	}
+}
+
 func TestLoadConfig_IncludeSingleFile(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "exporters.d", "mysql.yml"), `
